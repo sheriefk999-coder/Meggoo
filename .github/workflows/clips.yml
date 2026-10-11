@@ -95,7 +95,7 @@ jobs:
           TT_COOKIES: ${{ secrets.TT_COOKIES }}
           FB_COOKIES: ${{ secrets.FB_COOKIES }}
           IG_COOKIES: ${{ secrets.IG_COOKIES }}
-        run: python scripts/clipper.py
+        run: python Scripts/clipper.py
 
       - name: Save clips as artifact
         if: always()
