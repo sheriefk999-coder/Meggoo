@@ -1,0 +1,108 @@
+name: Moggo Clips v2 (فيديو طويل → شورتس)
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: "لينك أو أكتر (افصل بمسافة أو فاصلة)"
+        required: true
+        type: string
+      from_youtube:
+        description: "يوتيوب"
+        type: boolean
+        default: false
+      from_tiktok:
+        description: "تيك توك"
+        type: boolean
+        default: false
+      from_facebook:
+        description: "فيسبوك"
+        type: boolean
+        default: false
+      from_instagram:
+        description: "إنستجرام"
+        type: boolean
+        default: false
+      from_other:
+        description: "موقع تاني"
+        type: boolean
+        default: false
+      clips_count:
+        description: "عدد المقاطع لكل فيديو"
+        type: choice
+        options: ["3", "5", "8", "10"]
+        default: "5"
+      caption_style:
+        description: "ستايل الكابشن: highlight=أصفر بينطّ | box=صندوق | minimal=بسيط | none=من غير"
+        type: choice
+        options: ["highlight", "box", "minimal", "none"]
+        default: "highlight"
+      layout:
+        description: "الكادر: auto=يختار لوحده | track=يتابع الوش | blur=الفيديو كامل وخلفية مموّهة"
+        type: choice
+        options: ["auto", "track", "blur"]
+        default: "auto"
+      whisper_model:
+        description: "دقة التفريغ: small=سريع | medium=أدق | large-v3-turbo=الأدق (أبطأ)"
+        type: choice
+        options: ["small", "medium", "large-v3-turbo"]
+        default: "small"
+
+jobs:
+  clip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache models
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/huggingface
+            models
+          key: clipper-${{ inputs.whisper_model }}-yunet-v1
+
+      - name: Install tools
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ffmpeg fonts-noto-core
+          pip install -U yt-dlp faster-whisper opencv-python-headless numpy requests
+          mkdir -p models
+          [ -f models/yunet.onnx ] || curl -fsSL -o models/yunet.onnx \
+            https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx || true
+
+      - name: Make clips
+        env:
+          VIDEO_URL: ${{ inputs.video_url }}
+          FROM_YOUTUBE: ${{ inputs.from_youtube }}
+          FROM_TIKTOK: ${{ inputs.from_tiktok }}
+          FROM_FACEBOOK: ${{ inputs.from_facebook }}
+          FROM_INSTAGRAM: ${{ inputs.from_instagram }}
+          FROM_OTHER: ${{ inputs.from_other }}
+          CLIPS_COUNT: ${{ inputs.clips_count }}
+          CAPTION_STYLE: ${{ inputs.caption_style }}
+          LAYOUT: ${{ inputs.layout }}
+          WHISPER_MODEL: ${{ inputs.whisper_model }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          YT_COOKIES: ${{ secrets.YT_COOKIES }}
+          TT_COOKIES: ${{ secrets.TT_COOKIES }}
+          FB_COOKIES: ${{ secrets.FB_COOKIES }}
+          IG_COOKIES: ${{ secrets.IG_COOKIES }}
+        run: python scripts/clipper.py
+
+      - name: Save clips as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clips
+          path: |
+            work/**/clip_*.mp4
+            work/**/clips.json
+          if-no-files-found: ignore
