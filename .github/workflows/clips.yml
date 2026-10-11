@@ -71,7 +71,7 @@ jobs:
         run: |
           sudo apt-get update -y
           sudo apt-get install -y ffmpeg fonts-noto-core
-          pip install -U yt-dlp faster-whisper opencv-python-headless numpy requests
+          pip install -U "yt-dlp[default]" deno faster-whisper opencv-python-headless numpy requests
           mkdir -p models
           [ -f models/yunet.onnx ] || curl -fsSL -o models/yunet.onnx \
             https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx || true
